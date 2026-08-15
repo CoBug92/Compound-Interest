@@ -8,12 +8,16 @@ iOS-приложение для расчёта сложного процента
 - Регулярные пополнения: без пополнений, ежемесячно, ежеквартально или ежегодно.
 - Срок инвестирования в годах или месяцах.
 - Интерактивный график капитала по месяцам.
+- Локальная история расчётов с повторным применением и удалением записей.
+- Экспорт помесячной детализации капитала в PDF.
 - Локализация на русском и английском.
 
 ## Технологии
 
 - SwiftUI
 - Charts
+- SwiftData для локального хранения истории расчётов
+- Firebase Analytics через `FirebaseAnalyticsCore`
 - XcodeGen для генерации `.xcodeproj`
 - SwiftGen для type-safe доступа к локализациям
 - SwiftLint для проверки стиля
@@ -32,43 +36,45 @@ Compound Interest/
 └── Resources/           # Assets, localization, Info.plist
 
 UnitTests/                # Тесты, зеркалирующие production-слои
-Scripts/                 # Генерация, lint и release automation
+scripts/                 # Генерация, lint и release automation
 docs/                    # Проектные правила и документация
 ```
 
 ## Быстрый старт
 
 1. Установите Xcode и command line tools.
-2. Проверьте настройки в `Scripts/project.env`. Если файла нет, создайте его из примера и укажите свой Apple Developer Team ID:
+2. Проверьте настройки в `scripts/.env`. Этот файл хранится в репозитории и является единым источником не-секретных настроек проекта.
 
 ```sh
-cp Scripts/project.env.example Scripts/project.env
+cat scripts/.env
 ```
 
 3. Запустите bootstrap: он установит зависимости через Homebrew/Bundler, сгенерирует ресурсы и Xcode-проект, а затем откроет проект в Xcode:
 
 ```sh
-Scripts/bootstrap.sh
+scripts/bootstrap.sh
 ```
+
+Подробности по скриптам, CI и deploy находятся в `docs/scripts.md`.
 
 ## Разработка
 
 Запуск SwiftGen и XcodeGen:
 
 ```sh
-Scripts/generate.sh
+scripts/generate.sh
 ```
 
 Запуск SwiftLint:
 
 ```sh
-Scripts/swiftlint/swiftlint.sh
+scripts/swiftlint/swiftlint.sh
 ```
 
 Точечная проверка изменённого файла:
 
 ```sh
-swiftlint lint --config Scripts/swiftlint/.swiftlint.yml --no-cache "Compound Interest/Flows/Main/Views/MainParameterInputView.swift"
+swiftlint lint --config scripts/swiftlint/.swiftlint.yml --no-cache "Compound Interest/Flows/Main/Views/MainParameterInputView.swift"
 ```
 
 Проверка сборки без подписи:
@@ -77,50 +83,28 @@ swiftlint lint --config Scripts/swiftlint/.swiftlint.yml --no-cache "Compound In
 xcodebuild \
   -project "Compound Interest.xcodeproj" \
   -scheme "CompoundInterest" \
-  -destination "generic/platform=iOS" \
+  -destination "generic/platform=iOS Simulator" \
   CODE_SIGNING_ALLOWED=NO \
   build
 ```
 
-Если в sandbox/CI нет доступного Simulator runtime, `xcodebuild` может падать на CoreSimulator tooling до запуска приложения. В таком случае отдельно проверяйте SwiftLint и локальную сборку в Xcode.
-
-## CI на Mac mini
-
-Рекомендуемый минимальный вариант — GitHub Actions self-hosted runner на Mac mini. В репозитории используется workflow `.github/workflows/deploy-testflight.yml`: он запускается при каждом `push` в `master` и вручную через `workflow_dispatch`.
-
-Локальная проверка запускается командой:
+Запуск unit-тестов тем же маршрутом, который использует CI:
 
 ```sh
-Scripts/ci.sh
+cd scripts/fastlane
+bundle exec fastlane ios test
 ```
 
-Она генерирует ресурсы и Xcode-проект, запускает SwiftLint в строгом режиме и выполняет неподписанную Debug-сборку. Команда не синхронизирует signing, не загружает сборку в TestFlight и не изменяет версию.
+Если в sandbox/CI нет доступного Simulator runtime, `xcodebuild` может падать на CoreSimulator tooling до запуска приложения. В таком случае отдельно проверяйте SwiftLint и локальную сборку в Xcode.
 
-GitHub Actions workflow выполняет deploy-процесс отдельно:
+## CI и Deploy
 
-- устанавливает нужные Homebrew-зависимости и Ruby gems из `Gemfile`;
-- создаёт локальный `Scripts/project.env` для runner-а;
-- синхронизирует signing через Fastlane Match в readonly-режиме;
-- собирает `CompoundInterest` в `Release`;
-- загружает новую сборку в TestFlight;
-- коммитит обновлённый build number обратно в `master` с `[skip ci]`, чтобы не запускать pipeline по кругу.
+В репозитории есть два GitHub Actions workflow:
 
-На Mac mini нужно один раз установить GitHub Actions runner и добавить ему labels `self-hosted`, `macOS`, `personal` и `compound-interest`.
+- `.github/workflows/verify.yml` — проверка pull request в `master`.
+- `.github/workflows/testflight-deploy.yml` — deploy в TestFlight при `push` в `master`.
 
-Минимальная настройка Mac mini:
-
-1. Установите Xcode, откройте его один раз и примите license agreements.
-2. Установите Homebrew и Ruby Bundler, если их ещё нет.
-3. В GitHub откройте `Settings → Actions → Runners → New self-hosted runner` и выполните команды установки для macOS.
-4. При конфигурации runner-а добавьте labels `self-hosted`, `macOS`, `personal` и `compound-interest`.
-5. Запустите runner как сервис, чтобы CI переживал перезагрузку Mac mini.
-
-Настройки репозитория для CI:
-
-- `Secrets → Actions → APPLE_TEAM_ID` — Apple Developer Team ID.
-- `Variables → Actions → BUNDLE_ID` — bundle id, если нужно переопределить `ru.kostyuchenko.compoundInterest`.
-
-По умолчанию workflow использует `/Applications/Xcode.app`. Если Xcode установлен в другом месте, поменяйте `XCODE_PATH` в `.github/workflows/deploy-testflight.yml`.
+Операционные детали по CI, runner setup, secrets, Fastlane и Match находятся в `docs/scripts.md`.
 
 ## Гайдлайны
 
@@ -142,38 +126,10 @@ GitHub Actions workflow выполняет deploy-процесс отдельн�
 
 ## Deploy
 
-Fastlane находится в `Scripts/fastlane`.
-
-Deploy в TestFlight выполняет GitHub Actions workflow `Build and Deploy`. Он автоматически запускается при каждом `push` в `master`, собирает Release, загружает build в TestFlight, повышает build number до следующего относительно App Store Connect и коммитит изменение версии обратно в `master`. Ручной запуск через `workflow_dispatch` тоже доступен; marketing version повышается patch-ом только если выбрать `bump_version=true`.
-
-Для GitHub Actions deploy настройте secrets:
-
-- `APPLE_TEAM_ID`
-- `APP_STORE_CONNECT_API_KEY_ID`
-- `APP_STORE_CONNECT_API_ISSUER_ID`
-- `APP_STORE_CONNECT_API_KEY_CONTENT`
-- `MATCH_PASSWORD`
-
-`APP_STORE_CONNECT_API_KEY_CONTENT` должен содержать ключ в base64: Fastlane всегда интерпретирует это значение как base64-контент.
-
-### Match certificates
-
-Сертификаты и provisioning profiles хранятся в общем private repo `Apple-Certificates`. Для нескольких Apple Developer Teams используется отдельная branch на каждую команду/компанию:
-
-- `personal` — личная Apple Developer Team `Q9WXSNT6UT`;
-- для компаний используйте стабильное имя компании, например `company-acme`.
-
-CI и deploy всегда используют `MATCH_READONLY=true`, чтобы GitHub Actions не создавал и не пересоздавал signing assets. Первичная генерация или обновление сертификатов выполняется вручную с Mac mini через `MATCH_READONLY=false`.
-
-Перед deploy проверьте:
-
-- `Scripts/project.env`
-- `Scripts/fastlane/.env`
-- App Store Connect API key переменные
-- Match credentials
-
-Запуск lane выполняется из папки `Scripts/fastlane`:
+Fastlane находится в `scripts/fastlane`. Локальный запуск lane:
 
 ```sh
-bundle exec fastlane ios deploy_to_tf
+bundle exec fastlane ios deploy
 ```
+
+Полное описание deploy-процесса, секретов и signing-настроек находится в `docs/scripts.md`.

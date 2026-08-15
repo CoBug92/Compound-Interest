@@ -1,0 +1,191 @@
+name: verify
+
+on:
+  pull_request:
+    branches:
+      - master
+  workflow_call:
+
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    name: generate
+    runs-on:
+      - self-hosted
+      - macOS
+      - personal
+      - compound-interest
+    timeout-minutes: 30
+    env:
+      XCODE_PATH: /Applications/Xcode.app
+      DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Select Xcode
+        run: |
+          if [ -d "$DEVELOPER_DIR" ]; then
+            export PATH="$DEVELOPER_DIR/usr/bin:$PATH"
+            echo "Using DEVELOPER_DIR=$DEVELOPER_DIR"
+            xcodebuild -version
+          else
+            echo "Developer directory does not exist: $DEVELOPER_DIR"
+            xcode-select -p
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: |
+          export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+          brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+          brew list swiftgen >/dev/null 2>&1 || brew install swiftgen
+          brew list swiftlint >/dev/null 2>&1 || brew install swiftlint
+
+          ruby_version="$(ruby -e 'print RbConfig::CONFIG["ruby_version"]')"
+          user_gem_home="$HOME/.gem/ruby/$ruby_version"
+          export GEM_HOME="$user_gem_home"
+          export GEM_PATH="$GEM_HOME:$(ruby -e 'print Gem.default_dir')"
+          export PATH="$GEM_HOME/bin:$PATH"
+
+          gem install --user-install bundler -v 2.5.3
+          bundle _2.5.3_ config set --local path "$GEM_HOME"
+          bundle _2.5.3_ install
+
+      - name: Generate project
+        run: |
+          export PATH="$HOME/.gem/ruby/$(ruby -e 'print RbConfig::CONFIG["ruby_version"]')/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+          cd scripts/fastlane
+          bundle _2.5.3_ exec fastlane ios generate
+
+      - name: Upload generated project
+        uses: actions/upload-artifact@v6
+        with:
+          name: generated-project
+          path: |
+            Compound Interest.xcodeproj
+            Compound Interest/Resources/Generated
+
+  lint:
+    name: lint
+    needs: generate
+    runs-on:
+      - self-hosted
+      - macOS
+      - personal
+      - compound-interest
+    timeout-minutes: 30
+    env:
+      XCODE_PATH: /Applications/Xcode.app
+      DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download generated project
+        uses: actions/download-artifact@v5
+        with:
+          name: generated-project
+          path: .
+
+      - name: Install dependencies
+        run: |
+          export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+          brew list swiftlint >/dev/null 2>&1 || brew install swiftlint
+
+          ruby_version="$(ruby -e 'print RbConfig::CONFIG["ruby_version"]')"
+          user_gem_home="$HOME/.gem/ruby/$ruby_version"
+          export GEM_HOME="$user_gem_home"
+          export GEM_PATH="$GEM_HOME:$(ruby -e 'print Gem.default_dir')"
+          export PATH="$GEM_HOME/bin:$PATH"
+
+          gem install --user-install bundler -v 2.5.3
+          bundle _2.5.3_ config set --local path "$GEM_HOME"
+          bundle _2.5.3_ install
+
+      - name: Run lint
+        run: |
+          export PATH="$HOME/.gem/ruby/$(ruby -e 'print RbConfig::CONFIG["ruby_version"]')/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+          cd scripts/fastlane
+          bundle _2.5.3_ exec fastlane ios lint
+
+  tests:
+    name: tests
+    if: ${{ always() }}
+    needs:
+      - generate
+      - lint
+    runs-on:
+      - self-hosted
+      - macOS
+      - personal
+      - compound-interest
+    timeout-minutes: 60
+    env:
+      XCODE_PATH: /Applications/Xcode.app
+      DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+    steps:
+      - name: Check upstream jobs
+        run: |
+          if [ "${{ needs.generate.result }}" != "success" ] || \
+             [ "${{ needs.lint.result }}" != "success" ]; then
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download generated project
+        uses: actions/download-artifact@v5
+        with:
+          name: generated-project
+          path: .
+
+      - name: Select Xcode
+        run: |
+          if [ -d "$DEVELOPER_DIR" ]; then
+            export PATH="$DEVELOPER_DIR/usr/bin:$PATH"
+            echo "Using DEVELOPER_DIR=$DEVELOPER_DIR"
+            xcodebuild -version
+          else
+            echo "Developer directory does not exist: $DEVELOPER_DIR"
+            xcode-select -p
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: |
+          export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+          brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+          brew list swiftgen >/dev/null 2>&1 || brew install swiftgen
+          brew list swiftlint >/dev/null 2>&1 || brew install swiftlint
+
+          ruby_version="$(ruby -e 'print RbConfig::CONFIG["ruby_version"]')"
+          user_gem_home="$HOME/.gem/ruby/$ruby_version"
+          export GEM_HOME="$user_gem_home"
+          export GEM_PATH="$GEM_HOME:$(ruby -e 'print Gem.default_dir')"
+          export PATH="$GEM_HOME/bin:$PATH"
+
+          gem install --user-install bundler -v 2.5.3
+          bundle _2.5.3_ config set --local path "$GEM_HOME"
+          bundle _2.5.3_ install
+
+      - name: Run tests
+        run: |
+          export CI_DERIVED_DATA_ROOT="$RUNNER_TEMP/derived-data/test"
+          export PATH="$HOME/.gem/ruby/$(ruby -e 'print RbConfig::CONFIG["ruby_version"]')/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+          cd scripts/fastlane
+          bundle _2.5.3_ exec fastlane ios test
+
+      - name: Run build
+        run: |
+          export CI_DERIVED_DATA_ROOT="$RUNNER_TEMP/derived-data/build"
+          export PATH="$HOME/.gem/ruby/$(ruby -e 'print RbConfig::CONFIG["ruby_version"]')/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+          cd scripts/fastlane
+          bundle _2.5.3_ exec fastlane ios build

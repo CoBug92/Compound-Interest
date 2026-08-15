@@ -56,7 +56,10 @@ final class MainViewModelHistoryTests: XCTestCase {
     }
 
     func testApplyingHistoryEntryRestoresInputAndClearsResult() {
-        let viewModel = MainViewModel()
+        let viewModel = MainViewModel(
+            historyRepository: InMemoryHistoryRepository(),
+            analyticsClient: AnalyticsClientSpy()
+        )
         configureValidInput(viewModel)
         viewModel.calculateResult()
         let entry = HistoryEntry(

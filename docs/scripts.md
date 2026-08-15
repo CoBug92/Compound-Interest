@@ -1,181 +1,111 @@
-# Scripts Directory Guide
+# scripts Directory Guide
 
-Документ описывает назначение папки `Scripts`, основные entrypoint-скрипты и правила изменения генерации проекта.
+Документ описывает назначение папки `scripts`, entrypoint-скрипты, общий `scripts/.env` и release-инфраструктуру проекта. Это канонический документ по скриптам, CI и deploy.
 
 ## Общая идея
 
-`Scripts` содержит инфраструктуру первичной настройки проекта, генерации ресурсов и `.xcodeproj`, SwiftLint и Fastlane deploy. Основной пользовательский сценарий — проверить `Scripts/project.env`, при его отсутствии создать файл из `Scripts/project.env.example`, а затем запустить `Scripts/bootstrap.sh` или `Scripts/generate.sh`.
+`scripts` содержит генерацию проекта, SwiftGen, SwiftLint, XcodeGen и Fastlane. Единый источник правды для не-секретных настроек проекта — tracked файл `scripts/.env`. Shell-скрипты, XcodeGen, Fastlane и GitHub Actions читают одни и те же значения из этого файла; секреты deploy остаются только в GitHub Secrets.
 
 ## Структура
 
 ```text
-Scripts/
+scripts/
+  .env
   bootstrap.sh
   generate.sh
-  project.env.example
-  project.env
   fastlane/
   swiftgen/
   swiftlint/
   xcodegen/
 ```
 
-`Scripts/project.env` содержит настройки конкретного приложения. Его можно передавать и хранить в репозитории, если команде нужны общие значения. Секреты следует хранить отдельно — например, в GitHub Secrets или `Scripts/fastlane/.env`.
-
 ## Environment
 
-`Scripts/project.env.example` содержит пример обязательных переменных:
+`scripts/.env` используется одинаково из shell-скриптов, XcodeGen, Fastlane и GitHub Actions. Для CI схема берётся из `TARGET_NAME`. Simulator destination можно переопределить через `CI_XCODE_DESTINATION`, а destination для unsigned build — через `CI_BUILD_DESTINATION`. По умолчанию Fastlane сам находит первый доступный iPhone simulator для тестов, а для unsigned build использует `generic/platform=iOS Simulator`.
 
 ```sh
 PROJECT_NAME="Compound Interest"
 APP_DISPLAY_NAME="Сложный процент"
-TARGET_NAME=CompoundInterest
-TEAM_ID=YOUR_APPLE_TEAM_ID
-BUNDLE_ID=ru.kostyuchenko.compoundInterest
+TARGET_NAME="CompoundInterest"
+TEAM_ID="Q9WXSNT6UT"
+BUNDLE_ID="ru.kostyuchenko.compoundInterest"
 ```
 
-Назначение переменных:
-
-- `PROJECT_NAME` — имя директории приложения и `.xcodeproj`.
-- `APP_DISPLAY_NAME` — отображаемое имя приложения.
-- `TARGET_NAME` — имя app target и основной scheme.
-- `TEAM_ID` — Apple Developer Team ID.
-- `BUNDLE_ID` — bundle identifier приложения.
+Не храните в `scripts/.env` секреты App Store Connect и `MATCH_PASSWORD`.
 
 ## Entrypoints
 
-### `bootstrap.sh`
+### `scripts/bootstrap.sh`
 
-`Scripts/bootstrap.sh` — первичная настройка локального окружения.
+Ставит CLI-инструменты из `Brewfile`, при наличии Bundler ставит Ruby-зависимости, проверяет наличие `scripts/.env`, просит интерактивно подтвердить, что файл уже заполнен, затем запускает `scripts/generate.sh` и открывает `.xcodeproj`.
 
-Он делает следующее:
+### `scripts/generate.sh`
 
-- устанавливает CLI-инструменты из `Brewfile` через `brew bundle`;
-- устанавливает Ruby-зависимости через `bundle install`, если Bundler доступен;
-- проверяет наличие `Scripts/project.env`;
-- загружает переменные окружения;
-- просит подтвердить, что env настроен;
-- запускает `Scripts/generate.sh`;
-- открывает `${PROJECT_NAME}.xcodeproj` в Xcode.
-
-Используйте его при первом разворачивании проекта из шаблона:
-
-```sh
-./Scripts/bootstrap.sh
-```
-
-### `generate.sh`
-
-`Scripts/generate.sh` — основной неинтерактивный сценарий генерации.
-
-Он делает следующее:
-
-- загружает `Scripts/project.env`;
-- если `PROJECT_NAME` отличается от `AppName`, переименовывает директорию `AppName`;
-- создаёт `${PROJECT_NAME}/Resources/Generated`;
-- запускает SwiftGen;
-- запускает XcodeGen.
-
-Используйте его после изменения XcodeGen, SwiftGen, env или структуры проекта:
-
-```sh
-cd Scripts
-./generate.sh
-```
+Загружает `scripts/.env`, при необходимости переименовывает legacy-каталог `AppName` в `${PROJECT_NAME}`, создаёт `${PROJECT_NAME}/Resources/Generated`, затем запускает SwiftGen и XcodeGen.
 
 ## XcodeGen
 
-Файлы XcodeGen находятся в `Scripts/xcodegen`:
+Файлы XcodeGen находятся в `scripts/xcodegen`.
 
-- `project.yml` — верхнеуровневый spec, packages, configs и include `Application.yml`;
-- `Application.yml` — app target, build settings, Info.plist values, scripts и dependencies;
-- `xcodegen.sh` — безопасный wrapper вокруг `xcodegen`.
+- `project.yml` — верхнеуровневый spec
+- `Application.yml` — target, settings, build phases и test targets
+- `xcodegen.sh` — wrapper вокруг `xcodegen`
 
-Проект генерирует app target и target модульных тестов:
-
-```yaml
-targets:
-  ${TARGET_NAME}:
-    templates: [CommonTarget]
-  UnitTests:
-    type: bundle.unit-test
-```
-
-Проект не генерирует `IDETemplateMacros.plist`, поэтому новые файлы в Xcode создаются без автоматической шапки и начинаются сразу с кода.
-
-## SwiftGen
-
-Файлы SwiftGen находятся в `Scripts/swiftgen`:
-
-- `swiftgen.yml` — конфигурация генерации;
-- `swiftgen.sh` — wrapper, который добавляет `/opt/homebrew/bin` в `PATH` и запускает SwiftGen.
-
-Запуск вручную:
-
-```sh
-Scripts/swiftgen/swiftgen.sh
-```
-
-SwiftGen используется для type-safe доступа к локализационным строкам. Если проект переходит на String Catalog workflow без SwiftGen, этот блок нужно пересмотреть отдельно.
+Build phases внутри generated project указывают на `./scripts/swiftgen/swiftgen.sh` и `./scripts/swiftlint/swiftlint.sh`.
 
 ## SwiftLint
 
-Файлы SwiftLint находятся в `Scripts/swiftlint`:
+Файлы SwiftLint находятся в `scripts/swiftlint`.
 
-- `.swiftlint.yml` — whitelist-конфигурация правил;
-- `swiftlint.sh` — wrapper для локального запуска, Xcode build phase и CI.
+- `.swiftlint.yml` — whitelist-конфигурация
+- `swiftlint.sh` — wrapper для локального запуска и CI
 
-Запуск вручную:
-
-```sh
-Scripts/swiftlint/swiftlint.sh
-```
-
-Особенности wrapper-а:
-
-- запускает SwiftLint от корня проекта;
-- берёт config из `Scripts/swiftlint/.swiftlint.yml`;
-- проверяет только директорию `${PROJECT_NAME}`;
-- использует `--no-cache`, чтобы избежать ошибок записи cache-файлов в sandbox/CI;
-- не ломает Xcode build при warning/error SwiftLint, а выводит warning и завершает работу с `0`.
-
-Если нужно сделать SwiftLint строго блокирующим для CI, это лучше вынести в отдельный CI-only режим, а не менять поведение Xcode build phase.
+Wrapper загружает `scripts/.env`, вычисляет lint path из `PROJECT_NAME` и завершает процесс с ошибкой, если SwiftLint нашёл нарушения или если tool не установлен. Это важно для `verify` workflow.
 
 ## Fastlane
 
-Fastlane находится в `Scripts/fastlane`:
+Fastlane находится в `scripts/fastlane`.
 
-- `Appfile` — берёт app identifier из `BUNDLE_ID`;
-- `Fastfile` — lane `deploy_to_tf` для TestFlight;
-- `Matchfile` — настройки match;
-- `.env.example` — пример переменных для deploy-окружения.
+- `Appfile` читает `BUNDLE_ID` из `scripts/.env`
+- `Matchfile` хранит `git_url`, `git_branch` и остальные match-специфичные настройки, а `TEAM_ID` и `BUNDLE_ID` читает из `scripts/.env`
+- `Fastfile` содержит stage-lanes `generate`, `lint`, `test`, `build`, `deploy` и alias `deploy_to_tf`
+- `fastlane/README.md` автогенерируется fastlane и не является источником правды, если расходится с `Fastfile` или этим документом
 
-Deploy lane использует:
+`test` автоматически выбирает первый доступный iPhone simulator, если явно не задан `CI_XCODE_DESTINATION`.
 
-- `ENV["XCODE_PROJ_PATH"]`;
-- `ENV["TARGET_NAME"]` как scheme;
-- `BUNDLE_ID` как app identifier;
-- App Store Connect API key переменные;
-- `MATCH_PASSWORD` и keychain password.
+`build` собирает `Release` без подписи и по умолчанию использует `generic/platform=iOS Simulator`.
 
-`APP_STORE_CONNECT_API_KEY_CONTENT` всегда должен быть закодирован в base64: Fastlane вызывает `app_store_connect_api_key` с `is_key_content_base64: true`.
-
-Перед реальным deploy нужно проверить `Matchfile`, CI secrets и значения в `Scripts/project.env`.
+`deploy`:
+- разрешён только из `master`
+- использует встроенный `setup_ci` с уникальным CI keychain на каждый GitHub Actions run
+- синхронизирует Match в readonly-режиме
+- читает `MARKETING_VERSION` только из `scripts/xcodegen/Application.yml`
+- читает build number только из `CURRENT_PROJECT_VERSION` в `scripts/xcodegen/Application.yml`
+- вычисляет следующий TestFlight build number
+- при закрытом pre-release train автоматически повышает patch у `MARKETING_VERSION`, затем повторяет генерацию и upload в рамках текущего CI run
+- обновляет `MARKETING_VERSION` и `CURRENT_PROJECT_VERSION` в `scripts/xcodegen/Application.yml` перед генерацией проекта
+- повторно запускает `scripts/generate.sh` перед архивированием
+- архивирует Release с `xcargs: DEVELOPMENT_TEAM=<TEAM_ID>` и manual provisioning profile mapping из Match
+- загружает архив в TestFlight без дополнительной CI-обвязки вокруг keychain
 
 ## CI и deploy
 
-Локальный `Scripts/ci.sh` запускает `bundle exec fastlane ios ci`. Lane выполняет:
+`.github/workflows/verify.yml`:
+- запускается на `pull_request` в `master`
+- также доступен как reusable workflow через `workflow_call`
+- выполняет `generate`, `lint` и `tests` как отдельные job
+- job `tests` после успешных `generate` и `lint` запускает и `fastlane ios test`, и `fastlane ios build`
 
-- генерацию ресурсов и `.xcodeproj` через `Scripts/generate.sh`;
-- SwiftLint в строгом режиме;
-- чистую неподписанную Debug-сборку.
+`.github/workflows/testflight-deploy.yml`:
+- запускается на `push` в `master`
+- выполняет только fastlane lane `deploy_to_tf` на self-hosted runner
+- задаёт уникальный `CI_KEYCHAIN_NAME` на каждый run и удаляет этот keychain в `always()` post-step
+- reusable `verify` и отдельная job публикации git tag отключены до стабилизации signing
 
-GitHub Actions workflow `.github/workflows/deploy-testflight.yml` не вызывает `Scripts/ci.sh`. Он создаёт `Scripts/project.env` из настроек workflow, repository variable и secrets, а затем запускает `bundle exec fastlane ios deploy_to_tf` из `Scripts/fastlane`. Deploy lane синхронизирует signing, собирает Release, загружает сборку в TestFlight и коммитит обновлённую версию.
+Workflow не коммитят и не пушат изменения обратно в `master`.
 
 ## Правила изменения
 
-- Не дублируйте логику генерации в CI, Xcode build phases и локальных командах: лучше обновлять wrapper-скрипты.
-- Если меняются переменные проекта, согласованно обновляйте `project.env.example`, использующие их скрипты и XcodeGen spec.
-- Если добавляется новый tool config, кладите config и wrapper в отдельную подпапку внутри `Scripts`.
-- После изменений запускайте минимум `Scripts/generate.sh` или соответствующий wrapper напрямую.
-- После изменения XcodeGen проверяйте список target/scheme через `xcodebuild -list -project ${PROJECT_NAME}.xcodeproj`.
+- Если меняются env-переменные проекта, синхронно обновляйте `scripts/.env`, XcodeGen, Fastlane и workflow.
+- Не дублируйте build/lint/test команды в новых местах, если можно расширить существующие wrapper-скрипты или Fastlane lanes.
+- После изменения генерации запускайте минимум `scripts/generate.sh`.

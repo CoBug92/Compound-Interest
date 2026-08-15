@@ -1,4 +1,0 @@
-interface:
-  display_name: "Продуктовый Discovery"
-  short_description: "Оценка и поиск продуктовых гипотез"
-  default_prompt: "Используй $product-discovery, чтобы оценить идею: <идея>."

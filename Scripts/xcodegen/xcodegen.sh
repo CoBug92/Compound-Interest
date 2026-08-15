@@ -11,13 +11,13 @@ if ! command -v xcodegen >/dev/null 2>&1; then
     exit 1
 fi
 
-if [ ! -f "$SCRIPTS_DIR/project.env" ]; then
-    echo "Missing Scripts/project.env. Copy Scripts/project.env.example to Scripts/project.env and fill local values."
+if [ ! -f "$SCRIPTS_DIR/.env" ]; then
+    echo "Missing scripts/.env. Create scripts/.env and fill project values."
     exit 1
 fi
 
 set -a
-. "$SCRIPTS_DIR/project.env"
+. "$SCRIPTS_DIR/.env"
 set +a
 
 xcodegen --spec "$SCRIPT_DIR/project.yml" --project "$PROJECT_DIR"

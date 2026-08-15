@@ -1,0 +1,92 @@
+name: testflight-deploy
+
+on:
+  push:
+    branches:
+      - master
+
+concurrency:
+  group: testflight-deploy-master
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    name: deploy
+    runs-on:
+      - self-hosted
+      - macOS
+      - personal
+      - compound-interest
+    timeout-minutes: 60
+    env:
+      XCODE_PATH: /Applications/Xcode.app
+      DEVELOPER_DIR: /Applications/Xcode.app/Contents/Developer
+      CI_KEYCHAIN_NAME: compound_interest_ci_${{ github.run_id }}_${{ github.run_attempt }}
+      APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+      APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+      APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+      MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+      MATCH_READONLY: "true"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Select Xcode
+        run: |
+          if [ -d "$DEVELOPER_DIR" ]; then
+            export PATH="$DEVELOPER_DIR/usr/bin:$PATH"
+            echo "Using DEVELOPER_DIR=$DEVELOPER_DIR"
+            xcodebuild -version
+          else
+            echo "Developer directory does not exist: $DEVELOPER_DIR"
+            xcode-select -p
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: |
+          export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+          brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+          brew list swiftgen >/dev/null 2>&1 || brew install swiftgen
+          brew list swiftlint >/dev/null 2>&1 || brew install swiftlint
+
+          ruby_version="$(ruby -e 'print RbConfig::CONFIG["ruby_version"]')"
+          user_gem_home="$HOME/.gem/ruby/$ruby_version"
+          export GEM_HOME="$user_gem_home"
+          export GEM_PATH="$GEM_HOME:$(ruby -e 'print Gem.default_dir')"
+          export PATH="$GEM_HOME/bin:$PATH"
+
+          gem install --user-install bundler -v 2.5.3
+          bundle _2.5.3_ config set --local path "$GEM_HOME"
+          bundle _2.5.3_ install
+
+      - name: Deploy to TestFlight
+        run: |
+          export PATH="$HOME/.gem/ruby/$(ruby -e 'print RbConfig::CONFIG["ruby_version"]')/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
+          cd scripts/fastlane
+          bundle _2.5.3_ exec fastlane ios deploy_to_tf
+
+      - name: Cleanup CI keychain
+        if: always()
+        run: |
+          keychain_dir="$HOME/Library/Keychains"
+          login_keychain="$keychain_dir/login.keychain-db"
+
+          if [ -e "$login_keychain" ]; then
+            security default-keychain -s "$login_keychain" || true
+          fi
+
+          for keychain_path in \
+            "$keychain_dir/$CI_KEYCHAIN_NAME" \
+            "$keychain_dir/$CI_KEYCHAIN_NAME-db" \
+            "$keychain_dir/$CI_KEYCHAIN_NAME.keychain-db"
+          do
+            if [ -e "$keychain_path" ]; then
+              security delete-keychain "$keychain_path" || rm -f "$keychain_path"
+            fi
+          done

@@ -29,20 +29,20 @@ targetTemplates:
         product: FirebaseAnalyticsCore
     
     preBuildScripts:
-      - script: ./Scripts/swiftgen/swiftgen.sh
+      - script: ./scripts/swiftgen/swiftgen.sh
         name: Run SwiftGen
         outputFiles:
           - $(SRCROOT)/${PROJECT_NAME}/Resources/Generated/Localizations.swift
     postCompileScripts:
-      - script: ./Scripts/swiftlint/swiftlint.sh
+      - script: ./scripts/swiftlint/swiftlint.sh
         name: Run Swiftlint
         basedOnDependencyAnalysis: false
     info:
       path: ../../${PROJECT_NAME}/Resources/Plist/Info.plist
       properties:
         CFBundlePackageType: $(PRODUCT_BUNDLE_PACKAGE_TYPE)
-        CFBundleShortVersionString: '3.0.1'
-        CFBundleVersion: '5'
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchStoryboardName: LaunchScreen.storyboard
         ITSAppUsesNonExemptEncryption: NO
         CFBundleDisplayName: $(BUNDLE_DISPLAY_NAME)
@@ -79,7 +79,7 @@ settingGroups:
     ENABLE_HARDENED_RUNTIME: YES
     # Versioning
     CURRENT_PROJECT_VERSION: 5
-    MARKETING_VERSION: 3.0.1
+    MARKETING_VERSION: 3.0.2
     # Asset Catalog Compiler - Options
     ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     ASSETCATALOG_COMPILER_GENERATE_ASSET_SYMBOLS: YES
@@ -92,7 +92,6 @@ settingGroups:
     SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
     TARGETED_DEVICE_FAMILY: 1
     # Info.plist Values
-    INFOPLIST_KEY_CFBundleVersion: 5
     INFOPLIST_KEY_CFBundleDisplayName: ${APP_DISPLAY_NAME}
     INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]: YES
     INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]: YES

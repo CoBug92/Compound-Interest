@@ -1,4 +1,0 @@
-interface:
-  display_name: "Проверка результата"
-  short_description: "Проверка поведения и доказательств качества"
-  default_prompt: "Используй $verification, чтобы проверить результат задачи: <задача>."

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Реализация функции"
-  short_description: "Реализация и проверка согласованных функций"
-  default_prompt: "Используй $feature-delivery, чтобы реализовать функцию: <задача>."

@@ -21,22 +21,22 @@ else
     echo "warning: Bundler is not installed. Skipping Ruby dependencies."
 fi
 
-if [ ! -f project.env ]; then
-    echo "Missing Scripts/project.env. Copy Scripts/project.env.example to Scripts/project.env and fill local values."
+if [ ! -f .env ]; then
+    echo "Missing scripts/.env. Create scripts/.env and fill project values."
     exit 1
 fi
 
 set -a
-. ./project.env
+. ./.env
 set +a
 
-printf "Have you configured Scripts/project.env? [y/N] "
+printf "Have you configured scripts/.env? [y/N] "
 read answer
 case "$answer" in
     [yY]|[yY][eE][sS])
         ;;
     *)
-        echo "Please fill Scripts/project.env and run this script again."
+        echo "Please fill scripts/.env and run this script again."
         exit 1
         ;;
 esac

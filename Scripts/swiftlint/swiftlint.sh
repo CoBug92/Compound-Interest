@@ -6,9 +6,9 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 CONFIG_PATH="$SCRIPT_DIR/.swiftlint.yml"
 
-if [ -f "$PROJECT_ROOT/Scripts/project.env" ]; then
+if [ -f "$PROJECT_ROOT/scripts/.env" ]; then
     set -a
-    . "$PROJECT_ROOT/Scripts/project.env"
+    . "$PROJECT_ROOT/scripts/.env"
     set +a
 fi
 
@@ -22,15 +22,7 @@ fi
 if which swiftlint >/dev/null; then
     cd "$PROJECT_ROOT" || exit 1
     swiftlint lint --config "$CONFIG_PATH" --no-cache "$LINT_PATH"
-    status=$?
-    if [ $status -ne 0 ]; then
-        echo "warning: SwiftLint finished with status $status"
-        if [ "${SWIFTLINT_STRICT:-0}" = "1" ]; then
-            exit $status
-        fi
-        exit 0
-    fi
 else
     echo "warning: SwiftLint not installed, download from https://github.com/realm/SwiftLint"
-    exit 0
+    exit 1
 fi

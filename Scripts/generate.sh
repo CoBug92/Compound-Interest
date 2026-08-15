@@ -5,13 +5,13 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
-if [ ! -f "$SCRIPT_DIR/project.env" ]; then
-    echo "Missing Scripts/project.env. Copy Scripts/project.env.example to Scripts/project.env and fill local values."
+if [ ! -f "$SCRIPT_DIR/.env" ]; then
+    echo "Missing scripts/.env. Create scripts/.env and fill project values."
     exit 1
 fi
 
 set -a
-. "$SCRIPT_DIR/project.env"
+. "$SCRIPT_DIR/.env"
 set +a
 
 echo "Prepare project directory"

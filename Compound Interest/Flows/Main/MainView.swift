@@ -73,7 +73,7 @@ struct MainView: View {
             HistoryView(viewModel: viewModel.makeHistoryViewModel())
         } label: {
             Image(systemName: SFSymbols.clockArrowCirclepath)
-                .foregroundStyle(Color(.Button.secondary))
+                .foregroundStyle(Color(.Button.primary))
         }
         .simultaneousGesture(
             TapGesture().onEnded(viewModel.openHistory)

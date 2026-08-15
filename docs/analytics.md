@@ -1,9 +1,10 @@
 # Product Analytics
 
 Приложение использует Google Analytics for Firebase для измерения основных
-пользовательских сценариев. Firebase подключён через IDFA-free Swift Package
-product `FirebaseAnalyticsCore`; версия SDK зафиксирована на `12.17.0` в
-XcodeGen-конфигурации.
+пользовательских сценариев. Канонический список разрешённых событий должен
+совпадать с `AnalyticsEvent` в коде. Firebase подключён через IDFA-free Swift
+Package product `FirebaseAnalyticsCore`; версия SDK зафиксирована на `12.17.0`
+в XcodeGen-конфигурации.
 
 ## События приложения
 
@@ -36,10 +37,10 @@ Firebase также может автоматически собирать ст�
 1. Создайте iOS app в Firebase project с bundle identifier приложения.
 2. Скачайте `GoogleService-Info.plist` из Firebase Console.
 3. Добавьте файл в `Compound Interest/Resources/Plist/` и в app target.
-4. Запустите `Scripts/generate.sh`, затем проверьте Debug-сборку и события в
+4. Запустите `scripts/generate.sh`, затем проверьте Debug-сборку и события в
    Firebase DebugView.
 
 Если `GoogleService-Info.plist` отсутствует или настроен некорректно, это
-считается ошибкой интеграции Firebase. В таком состоянии аналитика не должна
-тихо деградировать: проблему нужно исправить в конфигурации проекта и
-подтвердить через DebugView.
+считается ошибкой интеграции Firebase. Проблему нужно исправить в конфигурации
+проекта и подтвердить через DebugView, а не трактовать как допустимую
+degradation.
