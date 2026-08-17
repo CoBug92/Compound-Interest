@@ -80,10 +80,9 @@ Fastlane находится в `scripts/fastlane`.
 - использует встроенный `setup_ci` с уникальным CI keychain на каждый GitHub Actions run
 - синхронизирует Match в readonly-режиме
 - читает `MARKETING_VERSION` только из `scripts/xcodegen/Application.yml`
-- читает build number только из `CURRENT_PROJECT_VERSION` в `scripts/xcodegen/Application.yml`
-- вычисляет следующий TestFlight build number
-- при закрытом pre-release train автоматически повышает patch у `MARKETING_VERSION`, затем повторяет генерацию и upload в рамках текущего CI run
-- обновляет `MARKETING_VERSION` и `CURRENT_PROJECT_VERSION` в `scripts/xcodegen/Application.yml` перед генерацией проекта
+- не изменяет `MARKETING_VERSION` автоматически
+- получает последний build number текущего train из App Store Connect и увеличивает его на один; новый train начинается с build `1`
+- временно записывает вычисленный `CURRENT_PROJECT_VERSION` в `scripts/xcodegen/Application.yml` перед генерацией проекта
 - повторно запускает `scripts/generate.sh` перед архивированием
 - архивирует Release с `xcargs: DEVELOPMENT_TEAM=<TEAM_ID>` и manual provisioning profile mapping из Match
 - загружает архив в TestFlight без дополнительной CI-обвязки вокруг keychain
@@ -93,16 +92,20 @@ Fastlane находится в `scripts/fastlane`.
 `.github/workflows/verify.yml`:
 - запускается на `pull_request` в `master`
 - также доступен как reusable workflow через `workflow_call`
-- выполняет `generate`, `lint` и `tests` как отдельные job
-- job `tests` после успешных `generate` и `lint` запускает и `fastlane ios test`, и `fastlane ios build`
+- на pull request запускает отдельные job `lint` и `test`
+- при reusable-вызове с `full: true` дополнительно запускает отдельную job `build`
+- каждая job изолированно готовит инструменты и генерирует проект через composite action `.github/actions/verify-stage`
 
 `.github/workflows/testflight-deploy.yml`:
 - запускается на `push` в `master`
-- выполняет только fastlane lane `deploy_to_tf` на self-hosted runner
+- сначала вызывает полный `verify` с отдельными `lint`, `tests` и `build`
+- после успешных проверок выполняет job `deploy` с fastlane lane `deploy_to_tf`
+- после успешной публикации создаёт отдельной job annotated tag `vX.Y.Z-bN` на слитом commit
 - задаёт уникальный `CI_KEYCHAIN_NAME` на каждый run и удаляет этот keychain в `always()` post-step
-- reusable `verify` и отдельная job публикации git tag отключены до стабилизации signing
+- после deploy восстанавливает tracked-файлы версии до состояния текущего commit независимо от результата
 
 Workflow не коммитят и не пушат изменения обратно в `master`.
+После успешного deploy workflow пушит только release tag.
 
 ## Правила изменения
 
