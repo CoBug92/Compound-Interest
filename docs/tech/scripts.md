@@ -98,7 +98,7 @@ Fastlane находится в `scripts/fastlane`.
 
 `.github/workflows/testflight-deploy.yml`:
 - запускается на `push` в `master`
-- сначала вызывает полный `verify` с отдельными `lint`, `tests` и `build`
+- сначала вызывает полный `verify` с отдельными `lint`, `test` и `build`
 - после успешных проверок выполняет job `deploy` с fastlane lane `deploy_to_tf`
 - после успешной публикации создаёт отдельной job annotated tag `vX.Y.Z-bN` на слитом commit
 - задаёт уникальный `CI_KEYCHAIN_NAME` на каждый run и удаляет этот keychain в `always()` post-step

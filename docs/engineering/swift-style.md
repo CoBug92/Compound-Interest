@@ -1,6 +1,6 @@
 # Swift File Style Guide
 
-Документ фиксирует локальные style-правила Swift-файлов, которые не стоит дублировать в архитектурных документах. Требования к `// MARK: -` секциям и их смысл описаны в `docs/project-guidelines.md`.
+Документ фиксирует локальные style-правила Swift-файлов, которые не стоит дублировать в архитектурных документах. Требования к `// MARK: -` секциям и их смысл описаны в [Project Guidelines](project-guidelines.md).
 
 ## File header
 
@@ -17,7 +17,7 @@
 
 SwiftLint отвечает только за корректный синтаксис `MARK`-комментариев: используем формат `// MARK: - Section name`.
 
-Список допустимых секций, их порядок и правила применения хранятся в `docs/project-guidelines.md`.
+Список допустимых секций, их порядок и правила применения хранятся в [Project Guidelines](project-guidelines.md).
 
 ## Protocol documentation
 

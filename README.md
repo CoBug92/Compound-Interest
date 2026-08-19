@@ -55,7 +55,7 @@ cat scripts/.env
 scripts/bootstrap.sh
 ```
 
-Подробности по скриптам, CI и deploy находятся в `docs/scripts.md`.
+Подробности по скриптам, CI и deploy находятся в `docs/tech/scripts.md`.
 
 ## Разработка
 
@@ -104,17 +104,22 @@ bundle exec fastlane ios test
 - `.github/workflows/verify.yml` — проверка pull request в `master`.
 - `.github/workflows/testflight-deploy.yml` — deploy в TestFlight при `push` в `master`.
 
-Операционные детали по CI, runner setup, secrets, Fastlane и Match находятся в `docs/scripts.md`.
+Операционные детали по CI, runner setup, secrets, Fastlane и Match находятся в `docs/tech/scripts.md`.
 
 ## Гайдлайны
 
 Перед изменениями полезно прочитать:
 
-- `docs/project-guidelines.md` — архитектурные и SwiftUI-правила проекта.
-- `docs/swift-style.md` — стиль Swift-кода.
-- `docs/swiftlint-rules.md` — текущая политика SwiftLint.
-- `docs/scripts.md` — устройство скриптов генерации, lint и deploy.
-- `docs/analytics.md` — контракт событий, privacy-ограничения и настройка Firebase.
+- `docs/index.md` — карта всей проектной документации.
+- `docs/tech/architecture.md` — актуальная архитектура, слои, поток данных и ограничения.
+- `docs/tech/project-structure.md` — назначение каталогов и правила размещения файлов.
+- `docs/product/user-scenarios.md` — основные пользовательские сценарии приложения.
+- `docs/tech/technical-decisions.md` — текущие технические решения и открытые вопросы.
+- `docs/engineering/project-guidelines.md` — архитектурные и SwiftUI-правила проекта.
+- `docs/engineering/swift-style.md` — стиль Swift-кода.
+- `docs/engineering/swiftlint-rules.md` — текущая политика SwiftLint.
+- `docs/tech/scripts.md` — устройство скриптов генерации, lint и deploy.
+- `docs/product/analytics.md` — контракт событий, privacy-ограничения и настройка Firebase.
 
 Ключевые правила:
 
@@ -132,4 +137,4 @@ Fastlane находится в `scripts/fastlane`. Локальный запус
 bundle exec fastlane ios deploy
 ```
 
-Полное описание deploy-процесса, секретов и signing-настроек находится в `docs/scripts.md`.
+Полное описание deploy-процесса, секретов и signing-настроек находится в `docs/tech/scripts.md`.
