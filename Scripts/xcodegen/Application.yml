@@ -92,7 +92,7 @@ settingGroups:
     SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
     TARGETED_DEVICE_FAMILY: 1
     # Info.plist Values
-    INFOPLIST_KEY_CFBundleDisplayName: ${APP_DISPLAY_NAME}
+    BUNDLE_DISPLAY_NAME: ${BUNDLE_DISPLAY_NAME}
     INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]: YES
     INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]: YES
     INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]: YES

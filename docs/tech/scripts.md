@@ -26,6 +26,7 @@ scripts/
 ```sh
 PROJECT_NAME="Compound Interest"
 APP_DISPLAY_NAME="Сложный процент"
+BUNDLE_DISPLAY_NAME="Процент"
 TARGET_NAME="CompoundInterest"
 TEAM_ID="Q9WXSNT6UT"
 BUNDLE_ID="ru.kostyuchenko.compoundInterest"
@@ -106,6 +107,8 @@ Fastlane находится в `scripts/fastlane`.
 
 Workflow не коммитят и не пушат изменения обратно в `master`.
 После успешного deploy workflow пушит только release tag.
+
+`APP_DISPLAY_NAME` используется как полное пользовательское имя приложения, а `BUNDLE_DISPLAY_NAME` — как короткая подпись под иконкой на домашнем экране iOS.
 
 ## Правила изменения
 
